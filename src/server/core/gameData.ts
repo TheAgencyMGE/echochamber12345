@@ -81,10 +81,10 @@ export class GameDataManager {
     return JSON.parse(prompt);
   }
 
-  // Save a drawing
+  // Save a drawing with title and description
   async saveDrawing(drawing: Drawing): Promise<void> {
     const drawingKey = `drawing:${drawing.id}`;
-    const userDrawingKey = `user_drawing:${drawing.userId}:${drawing.prompt}`;
+    const userDrawingKey = `user_drawing:${drawing.userId}:${new Date().toISOString().split('T')[0]}`;
     const dailyDrawingsKey = `daily_drawings:${new Date().toISOString().split('T')[0]}`;
     
     // Get existing drawings list

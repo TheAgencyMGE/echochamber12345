@@ -1,17 +1,19 @@
 // Game State Types
 export type GamePhase = 'waiting' | 'drawing' | 'submitted' | 'guessing' | 'voting' | 'results';
 
-export type Drawing = {
+export interface Drawing {
   id: string;
   userId: string;
   username: string;
-  imageData: string; // base64 encoded canvas data
-  prompt: string;
-  timestamp: number;
+  imageData: string;
+  title: string; // What the artist says they drew
+  description?: string; // Optional description
+  isRevealed: boolean; // Whether the title is revealed yet
+  createdAt: number;
   guesses: Guess[];
   votes: Vote[];
   points: number;
-};
+}
 
 export type Guess = {
   id: string;
@@ -61,23 +63,26 @@ export type Leaderboard = {
 };
 
 // API Response Types
-export type InitResponse = {
-  type: 'init';
-  postId: string;
-  userId: string;
-  username: string;
-  currentPrompt: DailyPrompt;
-  userDrawing?: Drawing | null;
-  gamePhase: GamePhase;
-  timeRemaining: number;
-  userStats: UserStats;
-  hasDrawnToday: boolean;
-};
+export interface InitResponse {
+  success: boolean;
+  data?: {
+    username: string;
+    hasDrawnToday: boolean;
+    userDrawing?: Drawing;
+    allDrawings: Drawing[];
+    userStats: UserStats;
+    timeRemaining: number; // Time until drawings are revealed
+    isRevealTime: boolean; // Whether it's time to reveal all titles
+    currentPrompt?: DailyPrompt; // Today's drawing prompt
+  };
+  error?: string;
+}
 
-export type SubmitDrawingRequest = {
+export interface SubmitDrawingRequest {
   imageData: string;
-  promptId: string;
-};
+  title: string;
+  description?: string;
+}
 
 export type SubmitDrawingResponse = {
   type: 'submit_drawing';

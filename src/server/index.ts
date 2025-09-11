@@ -12,8 +12,7 @@ import {
   GetUserStatsResponse,
   Drawing,
   Guess,
-  Vote,
-  GamePhase
+  Vote
 } from '../shared/types/api';
 import { reddit, createServer, context, getServerPort } from '@devvit/web/server';
 import { createPost } from './core/post';
@@ -57,7 +56,7 @@ router.get<{ postId: string }, InitResponse | { status: string; message: string 
         gameManager.getTodaysPrompt(),
         gameManager.getUserStats(userId),
         gameManager.hasUserDrawnToday(userId),
-        gameManager.getUserDrawingToday(userId)
+        gameManager.getDrawing(userId),
       ]);
 
       // Update username in stats if needed
@@ -66,33 +65,37 @@ router.get<{ postId: string }, InitResponse | { status: string; message: string 
         await gameManager.saveUserStats(userStats);
       }
 
-      // Determine game phase
-      let gamePhase: GamePhase = 'waiting';
-      if (hasDrawnToday) {
-        gamePhase = 'submitted';
-      } else {
-        gamePhase = 'drawing';
-      }
-
       // Calculate time remaining (reset at midnight EST)
       const now = new Date();
       const tomorrow = new Date(now);
       tomorrow.setDate(now.getDate() + 1);
       tomorrow.setHours(0, 0, 0, 0);
       const timeRemaining = tomorrow.getTime() - now.getTime();
+      const isRevealTime = timeRemaining <= 0;
 
-      res.json({
-        type: 'init',
-        postId: postId,
-        userId,
+      // Get all drawings for today (for the new system)
+      const allDrawings = await gameManager.getTodaysDrawings();
+
+      const responseData: InitResponse['data'] = {
         username: username ?? 'anonymous',
-        currentPrompt,
-        userDrawing: userDrawing || null,
-        gamePhase,
-        timeRemaining,
+        hasDrawnToday: !!hasDrawnToday,
+        allDrawings,
         userStats,
-        hasDrawnToday
-      });
+        timeRemaining: Math.max(0, timeRemaining),
+        isRevealTime,
+        currentPrompt
+      };
+
+      if (userDrawing) {
+        responseData.userDrawing = userDrawing;
+      }
+
+      const response: InitResponse = {
+        success: true,
+        data: responseData
+      };
+
+      res.json(response);
     } catch (error) {
       console.error(`API Init Error for post ${postId}:`, error);
       let errorMessage = 'Unknown error during initialization';
@@ -122,14 +125,14 @@ router.post<{}, SubmitDrawingResponse, SubmitDrawingRequest>(
       const username = await reddit.getCurrentUsername();
       const userId = username || 'anonymous';
       
-      const { imageData, promptId } = req.body;
+      const { imageData, title, description } = req.body;
 
       // Validate input
-      if (!imageData || !promptId) {
+      if (!imageData || !title) {
         res.status(400).json({
           type: 'submit_drawing',
           success: false,
-          message: 'imageData and promptId are required',
+          message: 'imageData and title are required',
         });
         return;
       }
@@ -145,29 +148,25 @@ router.post<{}, SubmitDrawingResponse, SubmitDrawingRequest>(
         return;
       }
 
-      // Get current prompt to validate
-      const currentPrompt = await gameManager.getTodaysPrompt();
-      if (currentPrompt.id !== promptId) {
-        res.status(400).json({
-          type: 'submit_drawing',
-          success: false,
-          message: 'Invalid prompt ID',
-        });
-        return;
-      }
-
       // Create drawing
-      const drawing: Drawing = {
+      const drawingData: Omit<Drawing, 'description'> & { description?: string } = {
         id: `drawing_${userId}_${Date.now()}`,
         userId,
         username: username || 'anonymous',
         imageData,
-        prompt: promptId,
-        timestamp: Date.now(),
+        title,
+        isRevealed: false, // Hide title until reveal time
+        createdAt: Date.now(),
         guesses: [],
         votes: [],
         points: 0
       };
+
+      if (description) {
+        (drawingData as Drawing).description = description;
+      }
+
+      const drawing = drawingData as Drawing;
 
       // Save drawing and update stats
       await Promise.all([

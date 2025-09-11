@@ -28,8 +28,8 @@ export const GameUI: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   // Handle drawing submission
-  const handleDrawingSubmit = async (imageData: string) => {
-    const success = await submitDrawing(imageData);
+  const handleDrawingSubmit = async (imageData: string, title: string, description?: string) => {
+    const success = await submitDrawing(imageData, title, description);
     if (success) {
       setSuccessMessage('Drawing submitted successfully! 🎉');
       setTimeout(() => setSuccessMessage(''), 3000);

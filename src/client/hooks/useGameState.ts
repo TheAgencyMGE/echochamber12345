@@ -8,7 +8,9 @@ import {
   SubmitDrawingResponse,
   GetDrawingsResponse,
   SubmitGuessResponse,
-  SubmitVoteResponse
+  SubmitVoteResponse,
+  Leaderboard,
+  GetLeaderboardResponse
 } from '../../shared/types/api';
 
 interface GameState {
@@ -22,6 +24,7 @@ interface GameState {
   timeRemaining: number;
   allDrawings: Drawing[];
   username: string;
+  leaderboard: Leaderboard | null;
 }
 
 export const useGameState = () => {
@@ -35,8 +38,25 @@ export const useGameState = () => {
     hasDrawnToday: false,
     timeRemaining: 0,
     allDrawings: [],
-    username: ''
+    username: '',
+    leaderboard: null
   });
+
+  // Load leaderboard
+  const loadLeaderboard = useCallback(async () => {
+    try {
+      const response = await fetch('/api/leaderboard');
+      if (!response.ok) {
+        throw new Error('Failed to load leaderboard');
+      }
+      
+      const data: GetLeaderboardResponse = await response.json();
+      setState(prev => ({ ...prev, leaderboard: data.leaderboard }));
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+      setState(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed to load leaderboard' }));
+    }
+  }, []);
 
   // Initialize game data
   const initializeGame = useCallback(async () => {
@@ -48,23 +68,24 @@ export const useGameState = () => {
         throw new Error('Failed to initialize game');
       }
       
-      const data: InitResponse = await response.json();
+      const response_data: InitResponse = await response.json();
       
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        gamePhase: data.gamePhase,
-        currentPrompt: data.currentPrompt,
-        userDrawing: data.userDrawing || null,
-        userStats: data.userStats,
-        hasDrawnToday: data.hasDrawnToday,
-        timeRemaining: data.timeRemaining,
-        username: data.username
-      }));
-      
-      // If user has drawn, load all drawings for guessing/voting
-      if (data.hasDrawnToday) {
-        await loadAllDrawings();
+      if (response_data.success && response_data.data) {
+        const { data } = response_data;
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          gamePhase: data.hasDrawnToday ? 'submitted' : 'drawing',
+          currentPrompt: data.currentPrompt || null,
+          userDrawing: data.userDrawing || null,
+          userStats: data.userStats,
+          hasDrawnToday: data.hasDrawnToday,
+          timeRemaining: data.timeRemaining,
+          allDrawings: data.allDrawings,
+          username: data.username
+        }));
+      } else {
+        throw new Error(response_data.error || 'Failed to initialize');
       }
     } catch (error) {
       console.error('Failed to initialize game:', error);
@@ -108,12 +129,7 @@ export const useGameState = () => {
   }, []);
 
   // Submit drawing
-  const submitDrawing = useCallback(async (imageData: string): Promise<boolean> => {
-    if (!state.currentPrompt) {
-      setState(prev => ({ ...prev, error: 'No prompt available' }));
-      return false;
-    }
-
+  const submitDrawing = useCallback(async (imageData: string, title: string, description?: string): Promise<boolean> => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
@@ -124,7 +140,8 @@ export const useGameState = () => {
         },
         body: JSON.stringify({
           imageData,
-          promptId: state.currentPrompt.id
+          title,
+          description
         }),
       });
 
@@ -159,7 +176,7 @@ export const useGameState = () => {
       }));
       return false;
     }
-  }, [state.currentPrompt, loadAllDrawings]);
+  }, [loadAllDrawings]);
 
   // Submit guess
   const submitGuess = useCallback(async (drawingId: string, guess: string): Promise<{ success: boolean; isCorrect: boolean; message?: string }> => {
@@ -287,6 +304,7 @@ export const useGameState = () => {
     ...state,
     initializeGame,
     loadAllDrawings,
+    loadLeaderboard,
     getDrawing,
     submitDrawing,
     submitGuess,
