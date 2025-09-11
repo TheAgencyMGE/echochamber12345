@@ -1,0 +1,169 @@
+# Subreddit Sketch: Daily Drawing Challenge
+
+## 🎯 Core Concept
+
+**Subreddit Sketch** is a simple daily drawing game where players get a Reddit-themed prompt each day and have to draw it in 60 seconds. The community then tries to guess what subreddit or Reddit concept was being drawn.
+
+## 🎮 Game Overview
+
+### How It Works
+1. **Daily Prompt**: Every day at 12 PM EST, a new Reddit-themed prompt appears
+2. **Draw**: Players have 60 seconds to sketch using a simple drawing tool
+3. **Submit**: Upload your drawing for the community to see
+4. **Guess**: Other players try to guess what you drew
+5. **Vote**: Community votes on the best/funniest drawings
+
+### Daily Prompts Examples
+- "r/aww in one drawing"
+- "How downvotes feel"
+- "A Reddit mod"
+- "The cake day experience"
+- "Getting your first gold award"
+- "r/mildlyinfuriating situation"
+
+## 🔧 Technical Implementation
+
+### Simple Tech Stack
+- **HTML5 Canvas** for the drawing interface
+- **React** for the UI components
+- **CSS animations** for smooth interactions
+- **Devvit Web** framework for Reddit integration
+
+### Drawing Tool Features
+- **Basic brush** with adjustable size
+- **Color palette** (6-8 essential colors)
+- **Eraser tool**
+- **Clear canvas button**
+- **Undo/Redo** (last 5 actions)
+- **Timer countdown** with visual indicator
+
+### No Complex 3D Needed
+- Clean, flat design aesthetic
+- Simple UI animations
+- Smooth canvas interactions
+- Mobile-friendly touch drawing
+
+## 🎲 Daily Mechanics
+
+### Game Flow (5 minutes total)
+1. **See today's prompt** (10 seconds to read)
+2. **Draw your interpretation** (60 seconds)
+3. **Submit drawing** (10 seconds)
+4. **Browse other submissions** (optional)
+5. **Make guesses on 3-5 drawings** (2-3 minutes)
+
+### Scoring System
+- **+10 points**: Someone correctly guesses your drawing
+- **+5 points**: You correctly guess someone else's drawing
+- **+20 points**: Your drawing gets "Best Drawing" votes
+- **+15 points**: Your drawing gets "Funniest Drawing" votes
+
+### Daily Themes
+- **Monday**: Subreddit emotions
+- **Tuesday**: Reddit features/mechanics
+- **Wednesday**: Famous Reddit moments
+- **Thursday**: Reddit user types
+- **Friday**: Meme interpretations
+- **Weekend**: Free draw (any Reddit topic)
+
+## 🏆 Simple Progression
+
+### Daily Leaderboard
+- Top artist (most points today)
+- Best guesser (most correct guesses)
+- Community favorite (most votes)
+
+### Weekly Achievements
+- **Picasso**: 5 best drawing wins this week
+- **Detective**: 25 correct guesses this week
+- **Consistent**: Drew every day this week
+- **Popular**: 50 total votes on your drawings
+
+### Simple Rewards
+- **Flair badges** next to your username
+- **Color palette unlocks** (special colors)
+- **Brush style unlocks** (dotted, textured)
+
+## 🎨 UI Design
+
+### Clean Interface
+- **Top**: Timer and prompt display
+- **Center**: Large drawing canvas (mobile optimized)
+- **Bottom**: Tool palette (brush, eraser, colors, clear)
+- **Side**: Undo/redo buttons
+
+### Visual Style
+- **Reddit orange** accent colors
+- **Clean white** drawing canvas
+- **Simple icons** for tools
+- **Smooth animations** for button presses
+
+## 📱 Mobile Optimization
+
+### Touch-Friendly
+- **Large buttons** for easy tapping
+- **Smooth drawing** with proper touch handling
+- **Zoom capability** for detailed work
+- **Responsive design** for all screen sizes
+
+### Performance
+- **Lightweight**: No heavy assets or 3D rendering
+- **Fast loading**: Simple HTML/CSS/JS
+- **Offline capable**: Can draw even with poor connection
+
+## 🎯 MVP Features
+
+### Week 1: Core Drawing
+- Basic canvas drawing with brush and eraser
+- 60-second timer
+- Submit drawing functionality
+- View other submissions
+
+### Week 2: Guessing Game
+- Guess interface for other drawings
+- Scoring system
+- Daily leaderboard
+- Voting on best/funniest
+
+### Week 3: Polish
+- Better drawing tools (colors, brush sizes)
+- Smooth animations
+- Mobile optimization
+- Daily prompt rotation system
+
+## 💎 Reddit Integration
+
+### Community Features
+- **Comments**: Discuss drawings in Reddit comments
+- **Sharing**: Easy crosspost to art subreddits
+- **Prompts**: Community can suggest future prompts
+- **Challenges**: Special themed weeks (r/PrequelMemes week, etc.)
+
+### Content Curation
+- **Prompt approval**: Community votes on prompt suggestions
+- **Featured gallery**: Best drawings become permanent gallery
+- **Subreddit spotlights**: Partner with specific communities
+
+## 🚀 Why This Works
+
+### Simple But Engaging
+- **Easy to understand**: Everyone knows how to draw
+- **Quick play**: Perfect for daily engagement
+- **Social**: Guessing creates community interaction
+- **Scalable**: Can add features gradually
+
+### Reddit-Perfect
+- **Cultural**: Celebrates Reddit culture and inside jokes
+- **Accessible**: Anyone can participate regardless of skill
+- **Shareable**: Drawings naturally get shared and discussed
+- **Community-driven**: Players create the content
+
+### Technically Feasible
+- **Well-established tech**: HTML5 Canvas is mature and reliable
+- **No complex assets**: Just need basic UI elements
+- **Mobile-friendly**: Touch drawing works great on phones
+- **Fast development**: Can build MVP in 2-3 weeks
+
+---
+
+**Subreddit Sketch** is the perfect daily game: simple concept, Reddit-native content, technically straightforward, and naturally creates the kind of shareable content that thrives on Reddit.
