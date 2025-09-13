@@ -1,4 +1,5 @@
 import express from 'express';
+import { WebSocketServer, WebSocket } from 'ws';
 import { 
   InitResponse, 
   SubmitDrawingRequest, 
@@ -14,12 +15,15 @@ import {
   Guess,
   Vote
 } from '../shared/types/api';
+import { GolfMessage } from '../shared/types/golf';
 import { reddit, createServer, context, getServerPort } from '@devvit/web/server';
 import { createPost } from './core/post';
 import { GameDataManager } from './core/gameData';
+import { GolfGameManager } from './core/golfGameManager';
 
 const app = express();
 const gameManager = GameDataManager.getInstance();
+const golfManager = GolfGameManager.getInstance();
 
 // Middleware for JSON body parsing
 app.use(express.json({ limit: '10mb' })); // Increased limit for canvas data
@@ -531,4 +535,139 @@ const port = getServerPort();
 
 const server = createServer(app);
 server.on('error', (err) => console.error(`server error; ${err.stack}`));
+
+// WebSocket server for Golf Gang multiplayer
+const wss = new WebSocketServer({ server });
+
+interface GolfWebSocket extends WebSocket {
+  playerId?: string;
+  playerName?: string;
+}
+
+wss.on('connection', (ws: GolfWebSocket) => {
+  console.log('New golf WebSocket connection');
+
+  ws.on('message', async (data: string) => {
+    try {
+      const message: GolfMessage = JSON.parse(data.toString());
+      await handleGolfMessage(ws, message);
+    } catch (error) {
+      console.error('Error handling golf message:', error);
+      ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+    }
+  });
+
+  ws.on('close', () => {
+    if (ws.playerId) {
+      const roomId = golfManager.leaveRoom(ws.playerId);
+      if (roomId) {
+        broadcastToRoom(roomId, { type: 'player_left', playerId: ws.playerId });
+        const room = golfManager.getRoom(roomId);
+        if (room) {
+          broadcastToRoom(roomId, { type: 'room_updated', room });
+        }
+      }
+    }
+  });
+});
+
+async function handleGolfMessage(ws: GolfWebSocket, message: GolfMessage) {
+  switch (message.type) {
+    case 'create_room':
+      const roomId = golfManager.createRoom(message.roomName, message.playerName, message.isPublic ?? true);
+      const room = golfManager.getRoom(roomId);
+      if (room && room.players.length > 0 && room.players[0]) {
+        ws.playerId = room.players[0].id;
+        ws.playerName = message.playerName;
+        ws.send(JSON.stringify({ type: 'room_updated', room }));
+      }
+      break;
+
+    case 'join_room':
+      const player = golfManager.joinRoom(message.roomId, message.playerName);
+      if (player) {
+        ws.playerId = player.id;
+        ws.playerName = message.playerName;
+        const joinedRoom = golfManager.getRoom(message.roomId);
+        if (joinedRoom) {
+          broadcastToRoom(message.roomId, { type: 'player_joined', player });
+          broadcastToRoom(message.roomId, { type: 'room_updated', room: joinedRoom });
+        }
+      } else {
+        ws.send(JSON.stringify({ type: 'error', message: 'Unable to join room' }));
+      }
+      break;
+
+    case 'leave_room':
+      if (ws.playerId) {
+        const leftRoomId = golfManager.leaveRoom(ws.playerId);
+        if (leftRoomId) {
+          broadcastToRoom(leftRoomId, { type: 'player_left', playerId: ws.playerId });
+          const updatedRoom = golfManager.getRoom(leftRoomId);
+          if (updatedRoom) {
+            broadcastToRoom(leftRoomId, { type: 'room_updated', room: updatedRoom });
+          }
+        }
+        delete ws.playerId;
+        delete ws.playerName;
+      }
+      break;
+
+    case 'start_game':
+      if (golfManager.startGame(message.roomId)) {
+        const gameRoom = golfManager.getRoom(message.roomId);
+        if (gameRoom) {
+          broadcastToRoom(message.roomId, { type: 'room_updated', room: gameRoom });
+        }
+      }
+      break;
+
+    case 'hit_ball':
+      if (ws.playerId && golfManager.hitBall(message.roomId, ws.playerId, message.velocity)) {
+        const ballRoom = golfManager.getRoom(message.roomId);
+        if (ballRoom) {
+          broadcastToRoom(message.roomId, { type: 'room_updated', room: ballRoom });
+        }
+      }
+      break;
+
+    case 'room_list':
+      const publicRooms = golfManager.getPublicRooms();
+      ws.send(JSON.stringify({ type: 'room_list', rooms: publicRooms }));
+      break;
+
+    default:
+      ws.send(JSON.stringify({ type: 'error', message: 'Unknown message type' }));
+  }
+}
+
+function broadcastToRoom(roomId: string, message: any) {
+  const room = golfManager.getRoom(roomId);
+  if (!room) return;
+
+  wss.clients.forEach((client: GolfWebSocket) => {
+    if (client.readyState === WebSocket.OPEN && client.playerId) {
+      const playerInRoom = room.players.find(p => p.id === client.playerId);
+      if (playerInRoom) {
+        client.send(JSON.stringify(message));
+      }
+    }
+  });
+}
+
+// Physics update loop for all rooms
+setInterval(() => {
+  golfManager.getPublicRooms().forEach(room => {
+    if (room.gamePhase === 'playing') {
+      const hasMovingBalls = golfManager.updatePhysics(room.id);
+      if (hasMovingBalls) {
+        const updatedRoom = golfManager.getRoom(room.id);
+        if (updatedRoom) {
+          broadcastToRoom(room.id, { type: 'room_updated', room: updatedRoom });
+        }
+      }
+    }
+  });
+}, 16); // ~60 FPS
+
 server.listen(port);

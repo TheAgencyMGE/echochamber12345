@@ -1,0 +1,1 @@
+export { golfCourses } from '../../shared/data/golfCourses';

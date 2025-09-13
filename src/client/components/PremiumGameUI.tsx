@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Users, Trophy, Eye, Heart, Zap, Sparkles } from 'lucide-react';
 import { DrawingCanvas } from './DrawingCanvas';
 import { useGameState } from '../hooks/useGameState';
+import { GolfGang } from './GolfGang';
 
 export const PremiumGameUI: React.FC = () => {
   const gameState = useGameState();
+  const [currentGame, setCurrentGame] = useState<'drawverse' | 'golfgang'>('drawverse');
   const [currentView, setCurrentView] = useState<'draw' | 'guess' | 'leaderboard'>('draw');
   const [showDrawingModal, setShowDrawingModal] = useState(false);
   const [guessInputs, setGuessInputs] = useState<Record<string, string>>({});
@@ -98,8 +100,55 @@ export const PremiumGameUI: React.FC = () => {
       </div>
 
       <div className="relative z-10">
-        {/* Header */}
-        <header className="border-b border-white/10 backdrop-blur-xl bg-white/5">
+        {/* Top Navigation */}
+        <nav className="border-b border-white/10 backdrop-blur-xl bg-white/5">
+          <div className="max-w-7xl mx-auto px-6 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <motion.div
+                  className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <span className="text-white font-bold text-sm">R</span>
+                </motion.div>
+                <span className="text-white font-bold text-lg">Reddit Party Games</span>
+              </div>
+              
+              <div className="flex items-center space-x-1">
+                {[
+                  { id: 'drawverse', label: 'Drawverse', active: currentGame === 'drawverse' },
+                  { id: 'golfgang', label: 'Golf Gang', active: currentGame === 'golfgang' },
+                  { id: 'wordchain', label: 'Word Chain', active: false },
+                  { id: 'trivia', label: 'Trivia Night', active: false },
+                  { id: 'storyteller', label: 'Story Builder', active: false }
+                ].map(({ id, label, active }) => (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      if (id === 'drawverse' || id === 'golfgang') {
+                        setCurrentGame(id as 'drawverse' | 'golfgang');
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      active
+                        ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                        : 'text-gray-300 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </nav>
+        {/* Render the selected game */}
+        {currentGame === 'golfgang' ? (
+          <GolfGang />
+        ) : (
+          <>
+            {/* Header */}
+            <header className="border-b border-white/10 backdrop-blur-xl bg-white/5">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -112,7 +161,7 @@ export const PremiumGameUI: React.FC = () => {
                 </motion.div>
                 <div>
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
-                    DrawVerse
+                    Drawverse
                   </h1>
                   <p className="text-sm text-purple-300">Daily Drawing Challenge</p>
                 </div>
@@ -543,6 +592,8 @@ export const PremiumGameUI: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+          </>
+        )}
       </div>
     </div>
   );
