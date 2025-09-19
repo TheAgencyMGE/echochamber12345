@@ -1,8 +1,8 @@
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
-import { 
-  InitResponse, 
-  SubmitDrawingRequest, 
+import {
+  InitResponse,
+  SubmitDrawingRequest,
   SubmitDrawingResponse,
   GetDrawingsResponse,
   SubmitGuessRequest,
@@ -20,10 +20,12 @@ import { reddit, createServer, context, getServerPort } from '@devvit/web/server
 import { createPost } from './core/post';
 import { GameDataManager } from './core/gameData';
 import { GolfGameManager } from './core/golfGameManager';
+import { StoryCollabManager } from './core/storyCollabManager';
 
 const app = express();
 const gameManager = GameDataManager.getInstance();
 const golfManager = GolfGameManager.getInstance();
+const storyManager = new StoryCollabManager();
 
 // Middleware for JSON body parsing
 app.use(express.json({ limit: '10mb' })); // Increased limit for canvas data
@@ -524,6 +526,101 @@ router.post('/internal/menu/post-create', async (_req, res): Promise<void> => {
       status: 'error',
       message: 'Failed to create post',
     });
+  }
+});
+
+// Story Collaboration Endpoints
+
+// Get current active story
+router.get('/api/story/current', async (_req, res): Promise<void> => {
+  try {
+    const activeStory = storyManager.getActiveStory();
+    const timeToNextHour = storyManager.getTimeToNextHour();
+    
+    res.json({
+      story: activeStory,
+      timeToNextHour,
+      canVote: activeStory ? storyManager.canUserVote('user123') : false // TODO: Get real user ID
+    });
+  } catch (error) {
+    console.error('Error getting current story:', error);
+    res.status(500).json({ error: 'Failed to get current story' });
+  }
+});
+
+// Create new story
+router.post('/api/story/create', async (req, res): Promise<void> => {
+  try {
+    const request = req.body || {};
+    const story = await storyManager.createNewStory(request);
+    const vote = story.currentVote;
+    
+    res.json({
+      story,
+      vote
+    });
+  } catch (error) {
+    console.error('Error creating story:', error);
+    res.status(500).json({ error: 'Failed to create story' });
+  }
+});
+
+// Submit vote
+router.post('/api/story/vote', async (req, res): Promise<void> => {
+  try {
+    const { voteId, optionId } = req.body;
+    const userId = 'user123'; // TODO: Get real user ID from auth
+    
+    const success = await storyManager.submitVote(userId, voteId, optionId);
+    const activeStory = storyManager.getActiveStory();
+    const timeRemaining = storyManager.getTimeToNextHour();
+    
+    res.json({
+      success,
+      vote: activeStory?.currentVote || null,
+      timeRemaining
+    });
+  } catch (error) {
+    console.error('Error submitting vote:', error);
+    res.status(500).json({ error: 'Failed to submit vote' });
+  }
+});
+
+// Get completed stories
+router.get('/api/story/completed', async (req, res): Promise<void> => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const result = storyManager.getCompletedStories(page, limit);
+    
+    res.json({
+      stories: result.stories,
+      total: result.total,
+      page,
+      totalPages: result.totalPages
+    });
+  } catch (error) {
+    console.error('Error getting completed stories:', error);
+    res.status(500).json({ error: 'Failed to get completed stories' });
+  }
+});
+
+// Get specific completed story
+router.get('/api/story/completed/:storyId', async (req, res): Promise<void> => {
+  try {
+    const { storyId } = req.params;
+    const story = storyManager.getCompletedStory(storyId);
+    
+    if (!story) {
+      res.status(404).json({ error: 'Story not found' });
+      return;
+    }
+    
+    res.json(story);
+  } catch (error) {
+    console.error('Error getting completed story:', error);
+    res.status(500).json({ error: 'Failed to get story' });
   }
 });
 

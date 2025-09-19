@@ -131,3 +131,76 @@ export type GetUserStatsResponse = {
   type: 'get_user_stats';
   stats: UserStats;
 };
+
+// Golf Game Types
+export interface GolfScore {
+  userId: string;
+  username: string;
+  strokes: number;
+  completedAt: number;
+  regenCount: number;
+}
+
+export interface DailyGolfChallenge {
+  date: string; // YYYY-MM-DD format
+  courseData: string; // Serialized course data
+  par: number;
+  scores: GolfScore[];
+}
+
+export interface GolfUserStats {
+  userId: string;
+  username: string;
+  totalGames: number;
+  bestScore: number;
+  averageScore: number;
+  coursesCompleted: number;
+  currentStreak: number;
+  maxStreak: number;
+}
+
+export interface GolfLeaderboard {
+  daily: GolfScore[];
+  weekly: GolfUserStats[];
+  allTime: GolfUserStats[];
+}
+
+export interface SubmitGolfScoreRequest {
+  strokes: number;
+  regenCount: number;
+}
+
+export interface SubmitGolfScoreResponse {
+  type: 'submit_golf_score';
+  success: boolean;
+  rank?: number;
+  message?: string;
+}
+
+export interface GetGolfLeaderboardResponse {
+  type: 'get_golf_leaderboard';
+  leaderboard: GolfLeaderboard;
+}
+
+export interface GetDailyCourseResponse {
+  type: 'get_daily_course';
+  course: string; // Serialized course data
+  par: number;
+}
+
+export interface GetDailyGolfChallengeResponse {
+  type: 'get_daily_golf_challenge';
+  challenge: DailyGolfChallenge;
+}
+
+export interface GolfInitResponse {
+  success: boolean;
+  data?: {
+    username: string;
+    hasPlayedToday: boolean;
+    dailyChallenge: DailyGolfChallenge;
+    userStats: GolfUserStats;
+    playerScore?: GolfScore;
+  };
+  error?: string;
+}
