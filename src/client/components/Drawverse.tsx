@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Users, Trophy, Eye, Heart, Zap, Sparkles } from 'lucide-react';
+import { Clock, Users, Trophy, Eye, Sparkles } from 'lucide-react';
 import { DrawingCanvas } from './DrawingCanvas';
 import { useGameState } from '../hooks/useGameState';
 
@@ -10,40 +10,36 @@ export const Drawverse: React.FC = () => {
   const [showDrawingModal, setShowDrawingModal] = useState(false);
   const [guessInputs, setGuessInputs] = useState<Record<string, string>>({});
 
-  // Load leaderboard when switching to leaderboard view
+  // Load leaderboard when switching to leaderboard view OR on component mount
   React.useEffect(() => {
-    if (currentView === 'leaderboard' && !gameState.leaderboard) {
+    if ((currentView === 'leaderboard' || !gameState.leaderboard) && !gameState.isLoading) {
       gameState.loadLeaderboard();
     }
-  }, [currentView, gameState.leaderboard, gameState.loadLeaderboard]);
+  }, [currentView, gameState.leaderboard, gameState.loadLeaderboard, gameState.isLoading]);
 
-  const handleVoteToggle = async (drawingId: string) => {
-    const drawing = gameState.allDrawings.find(d => d.id === drawingId);
-    if (!drawing) return;
-
-    const userHasVoted = drawing.votes.some(vote => vote.username === gameState.username);
-
-    try {
-      if (userHasVoted) {
-        // For now, we'll just prevent multiple votes by not allowing action
-        // TODO: Implement removeVote in the backend
-        return;
-      } else {
-        // Add vote (like)
-        await gameState.submitVote(drawingId, 'best');
-      }
-    } catch (error) {
-      console.error('Failed to toggle vote:', error);
+  // Load drawings when switching to guess view
+  React.useEffect(() => {
+    if (currentView === 'guess') {
+      gameState.loadAllDrawings();
     }
-  };
+  }, [currentView, gameState.loadAllDrawings]);
 
   const handleGuessSubmit = async (drawingId: string) => {
     const guess = guessInputs[drawingId];
     if (!guess?.trim()) return;
 
     try {
-      await gameState.submitGuess(drawingId, guess.trim());
+      const result = await gameState.submitGuess(drawingId, guess.trim());
       setGuessInputs(prev => ({ ...prev, [drawingId]: '' }));
+      
+      // Show feedback (you could add a toast notification here)
+      if (result.success) {
+        if (result.isCorrect) {
+          console.log('Correct guess! You earned points!');
+        } else {
+          console.log('Not quite right, but thanks for guessing!');
+        }
+      }
     } catch (error) {
       console.error('Failed to submit guess:', error);
     }
@@ -261,37 +257,75 @@ export const Drawverse: React.FC = () => {
                   <div className="text-center py-8">
                     <Eye className="w-12 h-12 text-purple-300 mx-auto mb-3" />
                     <p className="text-purple-300">No drawings to guess yet!</p>
+                    <p className="text-sm text-purple-400 mt-2">Drawings will appear here once other players submit them.</p>
                   </div>
                 ) : (
-                  <div className="grid gap-4">
+                  <div className="grid gap-6">
                     {gameState.allDrawings
                       .filter(d => !d.isRevealed && d.userId !== gameState.username)
-                      .slice(0, 3)
+                      .slice(0, 5)
                       .map((drawing) => (
-                        <div key={drawing.id} className="flex items-center space-x-4 p-3 bg-white/5 rounded-xl">
-                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-lg flex items-center justify-center">
-                            <Eye className="w-6 h-6 text-purple-300" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-white font-medium">by {drawing.username}</p>
-                            <p className="text-sm text-purple-300">{drawing.guesses.length} guesses</p>
-                          </div>
-                          <div className="flex space-x-2">
-                            <input
-                              type="text"
-                              value={guessInputs[drawing.id] || ''}
-                              onChange={(e) => setGuessInputs(prev => ({ ...prev, [drawing.id]: e.target.value }))}
-                              placeholder="Your guess..."
-                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                              onKeyPress={(e) => e.key === 'Enter' && handleGuessSubmit(drawing.id)}
-                            />
-                            <button
-                              onClick={() => handleGuessSubmit(drawing.id)}
-                              disabled={!guessInputs[drawing.id]?.trim()}
-                              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all duration-200 disabled:opacity-50"
-                            >
-                              Guess
-                            </button>
+                        <div key={drawing.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                          <div className="flex items-start space-x-4">
+                            {/* Drawing Display */}
+                            <div className="flex-shrink-0">
+                              <img 
+                                src={drawing.imageData} 
+                                alt="Drawing to guess"
+                                className="w-32 h-24 object-cover rounded-lg border-2 border-white/20 bg-white"
+                              />
+                            </div>
+                            
+                            {/* Drawing Info and Guess Input */}
+                            <div className="flex-1 space-y-3">
+                              <div>
+                                <p className="text-white font-medium">Drawing by {drawing.username}</p>
+                                <p className="text-sm text-purple-300">{drawing.guesses.length} guesses so far</p>
+                                {drawing.description && (
+                                  <p className="text-sm text-purple-400 mt-1">Hint: {drawing.description}</p>
+                                )}
+                              </div>
+                              
+                              {/* Guess Input */}
+                              <div className="flex space-x-2">
+                                <input
+                                  type="text"
+                                  value={guessInputs[drawing.id] || ''}
+                                  onChange={(e) => setGuessInputs(prev => ({ ...prev, [drawing.id]: e.target.value }))}
+                                  placeholder="What do you think this is?"
+                                  className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                  onKeyPress={(e) => e.key === 'Enter' && handleGuessSubmit(drawing.id)}
+                                />
+                                <button
+                                  onClick={() => handleGuessSubmit(drawing.id)}
+                                  disabled={!guessInputs[drawing.id]?.trim()}
+                                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Submit Guess
+                                </button>
+                              </div>
+                              
+                              {/* Recent Guesses */}
+                              {drawing.guesses.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-xs text-purple-400 mb-2">Recent guesses:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {drawing.guesses.slice(-3).map((guess, index) => (
+                                      <span 
+                                        key={index}
+                                        className={`px-2 py-1 rounded text-xs ${
+                                          guess.isCorrect 
+                                            ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                                            : 'bg-white/10 text-purple-300'
+                                        }`}
+                                      >
+                                        {guess.guess}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -303,24 +337,73 @@ export const Drawverse: React.FC = () => {
             {currentView === 'leaderboard' && (
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold text-white text-center">Today's Champions</h3>
-                {!gameState.leaderboard || gameState.leaderboard.daily.length === 0 ? (
+                {gameState.isLoading ? (
+                  <div className="text-center py-8">
+                    <Trophy className="w-12 h-12 text-purple-300 mx-auto mb-3" />
+                    <p className="text-purple-300">Loading leaderboard...</p>
+                  </div>
+                ) : !gameState.leaderboard || gameState.leaderboard.daily.length === 0 ? (
                   <div className="text-center py-8">
                     <Trophy className="w-12 h-12 text-purple-300 mx-auto mb-3" />
                     <p className="text-purple-300">No champions yet today!</p>
+                    <p className="text-sm text-purple-400 mt-2">Draw and guess to be the first on the leaderboard!</p>
+                    <button
+                      onClick={() => gameState.loadLeaderboard()}
+                      className="mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg text-sm transition-all duration-200"
+                    >
+                      Refresh Leaderboard
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {gameState.leaderboard.daily.slice(0, 5).map((player, index) => (
-                      <div key={player.username} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-lg">
-                            {index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                          </span>
-                          <span className="text-white font-medium">{player.username}</span>
+                    {gameState.leaderboard.daily.slice(0, 5).map((player, index) => {
+                      const isCurrentUser = player.username === gameState.username;
+                      return (
+                        <div 
+                          key={player.username} 
+                          className={`flex items-center justify-between p-3 rounded-xl ${
+                            isCurrentUser 
+                              ? 'bg-purple-500/20 border border-purple-400/30' 
+                              : 'bg-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <span className="text-lg">
+                              {index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                            </span>
+                            <span className={`font-medium ${isCurrentUser ? 'text-purple-200' : 'text-white'}`}>
+                              {player.username}{isCurrentUser ? ' (You)' : ''}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-yellow-400 font-bold">{player.totalPoints} pts</span>
+                            {player.totalDrawings > 0 && (
+                              <p className="text-xs text-purple-300">{player.totalDrawings} drawings</p>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-yellow-400 font-bold">{player.totalPoints} pts</span>
+                      );
+                    })}
+                    
+                    {/* Show current user if they're not in top 5 but have points */}
+                    {gameState.userStats && 
+                     gameState.userStats.totalPoints > 0 && 
+                     !gameState.leaderboard.daily.slice(0, 5).some(p => p.username === gameState.username) && (
+                      <div className="mt-4 p-3 bg-purple-500/20 border border-purple-400/30 rounded-xl">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-sm text-purple-300">Your Rank:</span>
+                            <span className="text-purple-200 font-medium">{gameState.username} (You)</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-yellow-400 font-bold">{gameState.userStats.totalPoints} pts</span>
+                            {gameState.userStats.totalDrawings > 0 && (
+                              <p className="text-xs text-purple-300">{gameState.userStats.totalDrawings} drawings</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </div>
@@ -368,7 +451,11 @@ export const Drawverse: React.FC = () => {
                     </button>
                   </div>
 
-                  <DrawingCanvas onDrawingComplete={handleDrawingComplete} />
+                  <DrawingCanvas 
+                    onDrawingComplete={handleDrawingComplete} 
+                    timeRemaining={60000} // 1 minute for drawing
+                    disabled={gameState.hasDrawnToday}
+                  />
                 </div>
               </motion.div>
             </motion.div>

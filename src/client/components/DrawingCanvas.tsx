@@ -77,6 +77,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    
+    // Improve rendering quality
+    ctx.imageSmoothingEnabled = true;
 
     // Save initial state
     saveToHistory();
@@ -102,16 +105,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     
     if ('touches' in e && e.touches.length > 0 && e.touches[0]) {
       return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY
       };
     } else if ('clientX' in e) {
       return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
       };
     }
     return { x: 0, y: 0 };
@@ -140,7 +145,15 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     ctx.globalCompositeOperation = currentTool === 'eraser' ? 'destination-out' : 'source-over';
     ctx.strokeStyle = currentColor;
     ctx.lineWidth = brushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+    
+    // Draw a small dot for single clicks
+    ctx.lineTo(point.x + 0.1, point.y + 0.1);
+    ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(point.x, point.y);
   }, [disabled, getPointFromEvent, currentTool, currentColor, brushSize, timerStarted]);
@@ -159,6 +172,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     if (!ctx) return;
 
     if (lastPoint) {
+      ctx.beginPath();
+      ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(point.x, point.y);
       ctx.stroke();
     }
@@ -309,12 +324,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
         {/* Canvas */}
         <div className="relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl opacity-20 blur-sm pointer-events-none"></div>
           <canvas
             ref={canvasRef}
-            className={`block border-2 border-gray-200 rounded-2xl shadow-2xl ${disabled ? 'cursor-not-allowed' : 'cursor-crosshair'}`}
+            className={`relative z-10 block border-2 border-gray-200 rounded-2xl shadow-2xl ${disabled ? 'cursor-not-allowed' : 'cursor-crosshair'}`}
             style={{ touchAction: 'none' }}
           />
-          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl opacity-20 blur-sm"></div>
         </div>
 
         {/* Tools */}

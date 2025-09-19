@@ -8,6 +8,8 @@ import { Drawverse } from './Drawverse';
 export const PremiumGameUI: React.FC = () => {
   const [currentGame, setCurrentGame] = useState<'drawverse' | 'storycollab' | 'golfgang'>('drawverse');
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [pendingGame, setPendingGame] = useState<'storycollab' | 'golfgang' | null>(null);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   // Remove first load flag after animation
@@ -131,10 +133,9 @@ export const PremiumGameUI: React.FC = () => {
                     onClick={() => {
                       if (id === 'drawverse') {
                         setCurrentGame('drawverse');
-                      } else if (id === 'storycollab') {
-                        setCurrentGame('storycollab');
-                      } else if (id === 'golfgang') {
-                        setCurrentGame('golfgang');
+                      } else if (id === 'storycollab' || id === 'golfgang') {
+                        setPendingGame(id as 'storycollab' | 'golfgang');
+                        setShowDisclaimerModal(true);
                       }
                     }}
                     className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
@@ -234,6 +235,68 @@ export const PremiumGameUI: React.FC = () => {
                         <span className="font-bold">New challenges every day!</span> Come back daily to compete, create, and connect with the community.
                       </p>
                     </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Disclaimer Modal */}
+        <AnimatePresence>
+          {showDisclaimerModal && (
+            <motion.div
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl max-w-lg w-full"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              >
+                <div className="p-8">
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">🚧</span>
+                    </div>
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent mb-3">
+                      Under Construction
+                    </h3>
+                    <p className="text-white/90 text-lg leading-relaxed">
+                      This feature is still under construction by <span className="font-bold text-orange-400">Agency</span>.
+                    </p>
+                    <p className="text-white/70 mt-3">
+                      Would you like to see the progress, or go back to <span className="font-bold text-purple-400">Drawverse</span> (the completed product)?
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 justify-center">
+                    <button
+                      onClick={() => {
+                        if (pendingGame) {
+                          setCurrentGame(pendingGame);
+                        }
+                        setShowDisclaimerModal(false);
+                        setPendingGame(null);
+                      }}
+                      className="flex-1 px-6 py-3 rounded-xl font-medium transition-all duration-200 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 shadow-lg hover:shadow-xl"
+                    >
+                      See Progress
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCurrentGame('drawverse');
+                        setShowDisclaimerModal(false);
+                        setPendingGame(null);
+                      }}
+                      className="flex-1 px-6 py-3 rounded-xl font-medium transition-all duration-200 bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-lg hover:shadow-xl"
+                    >
+                      Go to Drawverse
+                    </button>
                   </div>
                 </div>
               </motion.div>

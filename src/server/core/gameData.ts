@@ -129,8 +129,8 @@ export class GameDataManager {
 
   // Check if user has drawn today
   async hasUserDrawnToday(userId: string): Promise<boolean> {
-    const prompt = await this.getTodaysPrompt();
-    const userDrawingKey = `user_drawing:${userId}:${prompt.id}`;
+    const today = new Date().toISOString().split('T')[0];
+    const userDrawingKey = `user_drawing:${userId}:${today}`;
     
     const drawingId = await redis.get(userDrawingKey);
     return !!drawingId;
@@ -138,8 +138,8 @@ export class GameDataManager {
 
   // Get user's drawing for today
   async getUserDrawingToday(userId: string): Promise<Drawing | null> {
-    const prompt = await this.getTodaysPrompt();
-    const userDrawingKey = `user_drawing:${userId}:${prompt.id}`;
+    const today = new Date().toISOString().split('T')[0];
+    const userDrawingKey = `user_drawing:${userId}:${today}`;
     
     const drawingId = await redis.get(userDrawingKey);
     if (!drawingId) return null;
@@ -199,6 +199,9 @@ export class GameDataManager {
   async saveUserStats(stats: UserStats): Promise<void> {
     const statsKey = `stats:${stats.userId}`;
     await redis.set(statsKey, JSON.stringify(stats));
+    
+    // Add user to index for leaderboard tracking
+    await this.addUserToIndex(stats.userId);
   }
 
   // Update user points and stats
@@ -231,15 +234,85 @@ export class GameDataManager {
 
   // Get leaderboard data
   async getLeaderboard(): Promise<{ daily: UserStats[]; weekly: UserStats[]; allTime: UserStats[] }> {
-    // For MVP, we'll use a simple approach and track users as we encounter them
-    // In production, you'd want separate daily/weekly tracking with proper indexing
-    
-    // For now, return empty leaderboards - will be populated as users play
-    return {
-      daily: [],
-      weekly: [],
-      allTime: []
-    };
+    try {
+      // Get all user stats keys
+      const allStatsKeys = await this.getAllUserStatsKeys();
+      const allUserStats: UserStats[] = [];
+      
+      // Fetch all user stats
+      for (const key of allStatsKeys) {
+        try {
+          const statsData = await redis.get(key);
+          if (statsData) {
+            const stats = JSON.parse(statsData) as UserStats;
+            // Only include users who have actually participated (have points or drawings)
+            if (stats.totalPoints > 0 || stats.totalDrawings > 0 || stats.totalGuesses > 0) {
+              allUserStats.push(stats);
+            }
+          }
+        } catch (error) {
+          console.error(`Error parsing stats for key ${key}:`, error);
+        }
+      }
+      
+      // Sort by total points (descending)
+      const sortedStats = allUserStats.sort((a, b) => b.totalPoints - a.totalPoints);
+      
+      // For now, use the same data for all leaderboards
+      // In the future, you could implement separate daily/weekly tracking
+      return {
+        daily: sortedStats.slice(0, 10), // Top 10 for daily
+        weekly: sortedStats.slice(0, 10), // Top 10 for weekly  
+        allTime: sortedStats.slice(0, 20) // Top 20 for all-time
+      };
+    } catch (error) {
+      console.error('Error getting leaderboard:', error);
+      return {
+        daily: [],
+        weekly: [],
+        allTime: []
+      };
+    }
+  }
+
+  // Helper method to get all user stats keys
+  private async getAllUserStatsKeys(): Promise<string[]> {
+    try {
+      // Since Redis doesn't have a native KEYS command in this environment,
+      // we'll use a user index approach
+      const userIndexKey = 'user_stats_index';
+      const userIndex = await redis.get(userIndexKey);
+      
+      if (userIndex) {
+        const userIds = JSON.parse(userIndex) as string[];
+        return userIds.map(userId => `stats:${userId}`);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error getting user stats keys:', error);
+      return [];
+    }
+  }
+
+  // Helper method to add user to the stats index
+  private async addUserToIndex(userId: string): Promise<void> {
+    try {
+      const userIndexKey = 'user_stats_index';
+      const userIndex = await redis.get(userIndexKey);
+      
+      let userIds: string[] = [];
+      if (userIndex) {
+        userIds = JSON.parse(userIndex);
+      }
+      
+      if (!userIds.includes(userId)) {
+        userIds.push(userId);
+        await redis.set(userIndexKey, JSON.stringify(userIds));
+      }
+    } catch (error) {
+      console.error('Error adding user to index:', error);
+    }
   }
 
   private getDayOfYear(): number {

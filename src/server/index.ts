@@ -62,7 +62,7 @@ router.get<{ postId: string }, InitResponse | { status: string; message: string 
         gameManager.getTodaysPrompt(),
         gameManager.getUserStats(userId),
         gameManager.hasUserDrawnToday(userId),
-        gameManager.getDrawing(userId),
+        gameManager.getUserDrawingToday(userId),
       ]);
 
       // Update username in stats if needed
