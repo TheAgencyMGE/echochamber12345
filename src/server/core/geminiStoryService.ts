@@ -1,7 +1,12 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { StorySegment, VoteOption } from '../../shared/types/story';
 
-const GEMINI_API_KEY = 'AIzaSyCeo2y7AsEKu1DtykOk9ltVcSkpJ1PVlEE';
+// Get API key from environment variables with fallback for development
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyCeo2y7AsEKu1DtykOk9ltVcSkpJ1PVlEE';
+
+if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your_gemini_api_key_here') {
+  console.warn('Warning: GEMINI_API_KEY not properly configured. Please set it in your .env file.');
+}
 
 export class GeminiStoryService {
   private genAI: GoogleGenerativeAI;

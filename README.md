@@ -32,6 +32,7 @@ Master daily mini golf challenges! Navigate unique procedurally generated course
 - Node.js 22+ installed on your machine
 - Reddit account connected to Reddit Developers
 - Devvit CLI installed globally
+- Google Gemini API key (for AI story generation)
 
 ### Installation
 
@@ -46,14 +47,24 @@ Master daily mini golf challenges! Navigate unique procedurally generated course
    npm install
    ```
 
-3. Set up your Reddit app on the [Reddit Developers](https://developers.reddit.com/) platform
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   Then edit `.env` and add your Google Gemini API key:
+   ```
+   GEMINI_API_KEY=your_actual_api_key_here
+   ```
+   Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 
-4. Login to Devvit CLI:
+4. Set up your Reddit app on the [Reddit Developers](https://developers.reddit.com/) platform
+
+5. Login to Devvit CLI:
    ```bash
    npm run login
    ```
 
-5. Start development:
+6. Start development:
    ```bash
    npm run dev
    ```
